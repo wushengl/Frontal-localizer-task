@@ -24,7 +24,7 @@ switch device
     case 'laptop'
         % TESTING/PRACTICE
         Screen('Preference', 'SkipSyncTests', 1);
-        cfg.screen = 0;
+        cfg.screen = 1;
         cfg.eyetracker = 0;
     case 'bay1desktop'
         % TESTING
@@ -37,7 +37,7 @@ end
 % Filenames
 order_file = 'blockorder';
 
-cfg.vStimDir1 = ['faces' filesep 'faces_female' filesep];
+cfg.vStimDir1 = ['faces' filesep 'faces_female' filesep]; % filesep is '/'
 cfg.vStimDir2 = ['faces' filesep 'faces_male' filesep];
 cfg.aStimDir1 = ['animal-sounds' filesep 'cat_sounds' filesep];
 cfg.aStimDir2 = ['animal-sounds' filesep 'dog_sounds' filesep];
@@ -46,7 +46,7 @@ saveDir = ['results' filesep];
 % Numbers
 blocklength = 32; % 32 images per block
 nback = 2;  % 2-back task
-interval_ADDENDS = [1,1,2,2,3,4];
+interval_ADDENDS = [1,1,2,2,3,4]; % after how many items could be start of another target 
 intervals = interval_ADDENDS + nback;
 
 % Timing
@@ -63,6 +63,7 @@ cfg.newKey1 = '2';
 cfg.newKey2 = '2@';
 cfg.triggerKey1 = '=';
 cfg.triggerKey2 = '=+';
+cfg.escapeKey = KbName('ESCAPE'); % this might only be useful in while loop
 
 % Get block details specifications
 f = fopen(order_file);
@@ -93,15 +94,16 @@ AssertOpenGL;
 if cfg.eyetracker
     cfg.vDistance = 107.5; % scanner viewing distance w/ eyetracker
     cfg.dWidth = 41.5; % scanner display width w/ eyetracker
-    ppd = pi*rect(3) / atan(cfg.dWidth/cfg.vDistance/2) / 360;
+    ppd = pi*rect(3) / atan(cfg.dWidth/cfg.vDistance/2) / 360; % pixels per degree
 end
 
 % Squelch kb input, hide cursor.
 ListenChar(2);
-HideCursor;
+% HideCursor; % WSL: this is dangerous lol
 
 %% Initialize and save
-% Make sure results directory exists
+% Make sure results directory exists  
+% WSL: this should go to before line 83 
 if ~exist(saveDir, 'dir')
     mkdir(saveDir)
 end
@@ -273,11 +275,12 @@ for b = 1:nBlocks
     switch task
         case 'P' % Passive block do nothing.
         case 'A' % Active block create 2-backs.
-            i = RandSample(intervals);
+            i = randsample(intervals,1); % RandSample(intervals);  % WSL: RandSample doesn't exist
             while i <= blocklength
                 stimID(i) = stimID(i - nback);
-                i = i + RandSample(intervals);
+                i = i + randsample(intervals,1); %RandSample(intervals); 
             end
+            % now stimID is stimuli ID sequence with random 2-backs
     end
     
     % Loop through stimID order per block, & save a correct response matrix
@@ -353,13 +356,16 @@ for b = 1:nBlocks
     % Show each stimulus
     for t = 1:blocklength
         t
+        'Time since block start'
+        GetSecs - block_starts(b) - run_start_time
         if GetSecs - block_starts(b) - run_start_time > cfg.blockTime % Check to make sure we're still within blockTime
             break
         else
             fname = allStims(stimID(t)).name;
             stim_presented{t,b} = fname;
 
-            while GetSecs - block_starts(b) - run_start_time < block_landmarks(t+1)
+            % WSL: changed '< block_landmarks(t+1)' to '< block_landmarks(t)'
+            while GetSecs - block_starts(b) - run_start_time < block_landmarks(t) % TODO: should be t not t+1?
                 %wait
             end
             % SANITY CHECK TEST TIMING
@@ -393,7 +399,7 @@ for b = 1:nBlocks
             while GetSecs - cfg.stimEndTime < cfg.timeoutTime
                 % wait
             end
-            
+
             DrawFormattedText(cfg.win, '+', 'center','center',[255 255 255]);
             Screen('Flip', cfg.win);
             
@@ -466,8 +472,8 @@ function audStim(cfg,file)
 % Need to transpose, as audioread puts samples in rows and channels in
 % columns, while PsychPortAudio wants the reverse.
 % wavread is older function, used only for running on testing room Mac -
-% otherwise change to audioread
-stim = wavread([cfg.stimDir file])';
+% otherwise change to audioread 
+stim = audioread([cfg.stimDir file])'; % WSL: waveread is removed 
 stim = stim / max(max(stim)); % Normalize volume.
 if size(stim,1) == 1
     stim = [stim;stim]; % make it stereo if it isn't already
@@ -518,7 +524,7 @@ while (GetSecs - cfg.stimEndTime < cfg.timeoutTime)
                 end
                 responses(1,1,1) = r;
                 responses(1,1,2) = firstPress(k) - cfg.stimEndTime;
-                break
+                break 
             catch
                 'KbQueue failure'
                 break
@@ -535,6 +541,11 @@ while (GetSecs - cfg.stimEndTime < cfg.timeoutTime)
 end
 
 KbQueueRelease;
+
+% If a response is detected, time to break last while loop is less than
+% timeout time. Therefore when it reaches this "if", it's not timeout yet.
+% However, if no response is detected, it will run last while loop until
+% timeout, when it reaches this "if", it's timeout. 
 
 % Timeout.
 if GetSecs - cfg.stimEndTime > cfg.timeoutTime
@@ -595,7 +606,7 @@ end
 [id,name] = GetKeyboardIndices;
 
 kbnum = 0;
-for i = 1:numel(id)
+for i = 1:numel(id) % numel returns number of element
     if strcmp(name{i}, devstring)
         kbnum = id(i);
         break
