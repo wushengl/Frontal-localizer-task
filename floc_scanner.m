@@ -15,6 +15,9 @@ function floc_scanner(subID, whichorder, device)
 
 %% Specify params
 
+KbName('UnifyKeyNames');
+Screen('Preference', 'SkipSyncTests', 1);
+
 % Setup
 cfg.kb = getKeyboardID(device)
 switch device
@@ -57,11 +60,11 @@ TRperblock = 21; % 32 images in 40 seconds, plus 1 for start-of-block instructio
 cfg.blockTime = TR*TRperblock;
 
 % Keys
-cfg.repeatKey1 = '1';
+cfg.repeatKey1 = 'b'; % RIGHT BUTTON
 cfg.repeatKey2 = '1!';
-cfg.newKey1 = '2';
+cfg.newKey1 = 'y'; % LEFT BUTTON
 cfg.newKey2 = '2@';
-cfg.triggerKey1 = '=';
+cfg.triggerKey1 = 't';
 cfg.triggerKey2 = '=+';
 cfg.escapeKey = KbName('ESCAPE'); % this might only be useful in while loop
 
@@ -87,7 +90,7 @@ save([saveDir filename]);
 
 cfg.freq = 44100; % Audio device frequency
 InitializePsychSound;
-cfg.pahandle = PsychPortAudio('Open', [], [], 0, cfg.freq,2);
+cfg.pahandle = PsychPortAudio('Open', 3, 1, 0, cfg.freq,2);
 
 AssertOpenGL;
 [cfg.win, rect] = Screen('OpenWindow',cfg.screen,[0 0 0]);
@@ -98,7 +101,7 @@ if cfg.eyetracker
 end
 
 % Squelch kb input, hide cursor.
-ListenChar(2);
+% ListenChar(2);
 % HideCursor; % WSL: this is dangerous lol
 
 %% Initialize and save
@@ -460,7 +463,7 @@ switch modality
 end
 
 ShowCursor;
-ListenChar(0);
+% ListenChar(0);
 Screen('CloseAll');
 
 end
@@ -596,7 +599,8 @@ function kbnum = getKeyboardID(device)
 % Which string to look for?
 switch device
     case 'scanner'
-        devstring = 'Teensy Keyboard/Mouse';
+        %devstring = 'Teensy Keyboard/Mouse';
+        devstring = 'Keyboard';
     case 'laptop'
         devstring = 'Apple Internal Keyboard / Trackpad';
     case 'bay1desktop'
@@ -614,7 +618,7 @@ for i = 1:numel(id) % numel returns number of element
 end
 
 if kbnum==0 % error checking
-    error('No device by that name was detected');
+    %error('No device by that name was detected');
 end
 
 end
